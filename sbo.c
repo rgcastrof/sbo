@@ -40,13 +40,18 @@ struct Config {
 	const void *v;
 };
 
+typedef struct {
+	Package *pkg;    /* Stores the found package */
+	const void *arg; /* The commandline argument */
+	int status;      /* Package search status */
+} WalkArg;
 
 static void load_config(void);
 static int is_directory(const char *);
 static void git_exec_cmd(char **);
-static void walk(void (*)(const char *, const char *), const char *, const char *);
-static void query_pkg(const char *, const char *);
 static void sync_repository(void);
+static void walk(void (*)(WalkArg *), WalkArg *, const char *);
+static void query_pkg(WalkArg *);
 
 #include "config.h"
 
@@ -96,11 +101,11 @@ sync_repository(void)
 }
 
 static void
-walk(void (*callback)(const char *, const char *), const char *rootdir, const char *query)
+walk(void (*callback)(WalkArg *), WalkArg *wa, const char *rootdir)
 {
 	struct dirent *dent;
-	char path[PATH_MAX];
 	DIR *dir;
+	char path[PATH_MAX];
 
 	if ((dir = opendir(rootdir)) == NULL) {
 		fprintf(stderr, "%s: %s\n", rootdir, strerror(errno));
@@ -115,8 +120,14 @@ walk(void (*callback)(const char *, const char *), const char *rootdir, const ch
 				fprintf(stderr, "%s: %s\n", path, strerror(errno));
 				exit(EXIT_FAILURE);
 			}
-			callback(dent->d_name, query);
-			walk(callback, path, query);
+			wa->pkg->name = dent->d_name;
+			wa->pkg->category = &rootdir[strlen(cfg.repo_path)+1];
+			if (snprintf(wa->pkg->path, PATH_MAX, "%s/%s/%s", cfg.repo_path, wa->pkg->category, wa->pkg->name) < 0) {
+				fprintf(stderr, "%s: %s\n", wa->pkg->path, strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+			callback(wa);
+			walk(callback, wa, path);
 		} else
 			continue;
 	}
@@ -124,17 +135,21 @@ walk(void (*callback)(const char *, const char *), const char *rootdir, const ch
 }
 
 static void
-query_pkg(const char *entry, const char *query)
+query_pkg(WalkArg *wa)
 {
-	if (strcasestr(entry, query) != NULL)
-		printf("%s\n", entry);
+	if (strcasestr(wa->pkg->name, (char*)wa->arg) != NULL) {
+		printf("%s/%s\n", wa->pkg->category, wa->pkg->name);
+		wa->status = 1;
+	}
+}
 }
 
 int
 main(int argc, char *argv[])
 { 
-	const char *queryarg = NULL;
-	int c, syncflag = 0;
+	Package pkg;
+	WalkArg wa;
+	int c, syncflag = 0, queryflag = 0, infoflag = 0;
 
 	const char *shortopts = "SQ:";
 	const struct option longopts[] = {
@@ -148,7 +163,8 @@ main(int argc, char *argv[])
 				syncflag = 1;
 				break;
 			case 'Q':
-				queryarg = optarg;
+				queryflag = 1;
+				wa.arg = optarg;
 				break;
 			case '?':
 			default:
@@ -157,11 +173,20 @@ main(int argc, char *argv[])
 	}
 
 	load_config();
+	wa.pkg = &pkg;
+	wa.status = 0; /* status starts with 0, and if a package is found, is set to 1 */
+
 	if (syncflag)
 		sync_repository();
 
-	if (queryarg)
-		walk(query_pkg, cfg.repo_path, queryarg);
+	if (queryflag && wa.arg) {
+		printf("Searching for %s:\n", (char*)wa.arg);
+		walk(query_pkg, &wa, cfg.repo_path);
+		if (!wa.status) {
+			fprintf(stderr, "No match for %s found\n", (char*)wa.arg);
+			return 1;
+		}
+	}
 	
 	return 0;
 }
