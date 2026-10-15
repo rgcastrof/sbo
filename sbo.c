@@ -34,7 +34,6 @@
 
 #include "config.h"
 
-#define INSTALLED_DIR "/var/lib/pkgtools/packages"
 
 struct Config {
 	const char *repo_path;
