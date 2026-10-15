@@ -43,19 +43,21 @@ struct Config {
 };
 
 
-static void load_config(struct Config *);
+static void load_config(void);
 static int is_directory(const char *);
 static void git_exec_cmd(char **);
-static void sync_repository(struct Config *);
 static void walk(void (*)(const char *, const char *), const char *, const char *);
 static void query_pkg(const char *, const char *);
+static void sync_repository(void);
+
+static struct Config cfg;
 
 static void
-load_config(struct Config *cfg)
+load_config(void)
 {
-	cfg->repo_path = repo_path;
-	cfg->sbo_mirror = sbo_mirror;
-	cfg->sbo_branch = sbo_branch;
+	cfg.repo_path = repo_path;
+	cfg.sbo_mirror = sbo_mirror;
+	cfg.sbo_branch = sbo_branch;
 }
 
 static int
@@ -79,18 +81,18 @@ git_exec_cmd(char **argv)
 }
 
 static void
-sync_repository(struct Config *cfg)
+sync_repository(void)
 {
-	if (!is_directory(cfg->repo_path)) {
-		if (mkdir(cfg->repo_path, S_IRWXU) == -1) {
-			fprintf(stderr, "%s: %s\n", cfg->repo_path, strerror(errno));
+	if (!is_directory(cfg.repo_path)) {
+		if (mkdir(cfg.repo_path, S_IRWXU) == -1) {
+			fprintf(stderr, "%s: %s\n", cfg.repo_path, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
-		cfg->v = sync_cmd;
+		cfg.v = sync_cmd;
 	} else {
-		cfg->v = pull_cmd;
+		cfg.v = pull_cmd;
 	}
-	git_exec_cmd((char**)cfg->v);
+	git_exec_cmd((char**)cfg.v);
 }
 
 static void
@@ -131,7 +133,6 @@ query_pkg(const char *entry, const char *query)
 int
 main(int argc, char *argv[])
 { 
-	struct Config cfg;
 	const char *queryarg = NULL;
 	int c, syncflag = 0;
 
@@ -155,9 +156,9 @@ main(int argc, char *argv[])
 		}
 	}
 
-	load_config(&cfg);
+	load_config();
 	if (syncflag)
-		sync_repository(&cfg);
+		sync_repository();
 
 	if (queryarg)
 		walk(query_pkg, cfg.repo_path, queryarg);
