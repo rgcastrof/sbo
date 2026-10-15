@@ -22,7 +22,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-#include <linux/limits.h>
 
 #include <unistd.h>
 #include <stdio.h>
@@ -32,8 +31,7 @@
 #include <errno.h>
 #include <dirent.h>
 
-#include "config.h"
-
+#include "package.h"
 
 struct Config {
 	const char *repo_path;
@@ -49,6 +47,8 @@ static void git_exec_cmd(char **);
 static void walk(void (*)(const char *, const char *), const char *, const char *);
 static void query_pkg(const char *, const char *);
 static void sync_repository(void);
+
+#include "config.h"
 
 static struct Config cfg;
 
