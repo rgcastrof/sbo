@@ -52,6 +52,7 @@ static void git_exec_cmd(char **);
 static void sync_repository(void);
 static void walk(void (*)(WalkArg *), WalkArg *, const char *);
 static void query_pkg(WalkArg *);
+static void info_pkg(WalkArg *);
 
 #include "config.h"
 
@@ -142,6 +143,15 @@ query_pkg(WalkArg *wa)
 		wa->status = 1;
 	}
 }
+
+static void
+info_pkg(WalkArg *wa)
+{
+	if (!strcmp(wa->pkg->name, (char*)wa->arg)) {
+		package_print_info(wa->pkg);
+		package_print_slackdesc(wa->pkg);
+		exit(EXIT_SUCCESS);
+	}
 }
 
 int
@@ -151,10 +161,11 @@ main(int argc, char *argv[])
 	WalkArg wa;
 	int c, syncflag = 0, queryflag = 0, infoflag = 0;
 
-	const char *shortopts = "SQ:";
+	const char *shortopts = "SQ:I:";
 	const struct option longopts[] = {
 		{"sync", no_argument, NULL, 'S'},
 		{"query", required_argument, NULL, 'Q'},
+		{"info", required_argument, NULL, 'I'},
 	};
 
 	while((c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1) {
@@ -164,6 +175,10 @@ main(int argc, char *argv[])
 				break;
 			case 'Q':
 				queryflag = 1;
+				wa.arg = optarg;
+				break;
+			case 'I':
+				infoflag = 1;
 				wa.arg = optarg;
 				break;
 			case '?':
@@ -184,6 +199,14 @@ main(int argc, char *argv[])
 		walk(query_pkg, &wa, cfg.repo_path);
 		if (!wa.status) {
 			fprintf(stderr, "No match for %s found\n", (char*)wa.arg);
+			return 1;
+		}
+	}
+
+	if (infoflag && wa.arg) {
+		walk(info_pkg, &wa, cfg.repo_path);
+		if (!wa.status) {
+			fprintf(stderr, "Package %s not found.\n", (char*)wa.arg);
 			return 1;
 		}
 	}

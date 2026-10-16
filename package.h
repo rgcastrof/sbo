@@ -9,6 +9,7 @@ typedef struct {
 	char path[PATH_MAX];
 } Package;
 
+void package_print_info(Package *);
 void package_print_slackdesc(Package *);
 
 #endif
