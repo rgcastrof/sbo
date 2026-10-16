@@ -28,12 +28,13 @@ package_print_slackdesc(Package *pkg)
 {
 	FILE *fp;
 	char buf[128];
-	char *slackdesc_path = package_get_pkgfile(pkg, "/slack-desc");
-	if ((fp = fopen(slackdesc_path, "r"))==NULL) {
+	char *slackdesc_path = package_get_pkgfile(pkg, "slack-desc");
+	if ((fp = fopen(slackdesc_path, "r")) == NULL) {
 		fprintf(stderr, "fopen: %s", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
+	printf("DESCRIPTION:\n");
 	while(fgets(buf, sizeof(buf), fp) != NULL) {
 		if (strstr(buf, pkg->name)!=NULL)
 			printf("%s", buf);
